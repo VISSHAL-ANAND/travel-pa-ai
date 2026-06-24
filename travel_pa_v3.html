@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel-PA · Agent Intelligence</title>
+<meta name="description" content="Travel-PA AI assistant for travel agents — search across thousands of bookings instantly.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  /* ============================================================
+     TRAVEL-PA — Wayfinder
+     A calm, paper-white agent console. The signature element is
+     the "wayfinder": a thin arc with a single travelling mark —
+     a flight path, not a compass needle. Idle = fixed bearing.
+     Thinking = a sweep, like a route being plotted in real time.
+     ============================================================ */
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    /* Color */
+    --paper: #FAFAF8;
+    --paper-deep: #F3F1EC;
+    --panel: rgba(255, 255, 255, 0.72);
+    --panel-solid: #FFFFFF;
+    --line: #E7E2D8;
+    --line-soft: #EFEBE3;
+    --ink: #15192A;
+    --ink-soft: #5B5F6E;
+    --ink-faint: #9B9DA8;
+    --accent: #B6692C;
+    --accent-deep: #8F4F1F;
+    --accent-pale: #F3E3D2;
+    --accent-line: rgba(182, 105, 44, 0.22);
+    --good: #3D7A5C;
+    --good-pale: #E4EFE8;
+
+    /* Type */
+    --display: 'Fraunces', serif;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+
+    /* Shape */
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+    --r-xl: 28px;
+
+    /* Shadow */
+    --shadow-card: 0 1px 2px rgba(20, 20, 15, 0.04), 0 8px 24px rgba(20, 20, 15, 0.05);
+    --shadow-float: 0 4px 16px rgba(20, 20, 15, 0.05), 0 24px 60px rgba(20, 20, 15, 0.07);
+    --shadow-pop: 0 2px 8px rgba(182, 105, 44, 0.18);
+
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --spring: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--paper);
+    height: 100vh;
+    width: 100vw;
+    font-family: var(--sans);
+    color: var(--ink);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* faint paper grain + horizon wash, no neon glow */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% -10%, rgba(182, 105, 44, 0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 100% 100%, rgba(182, 105, 44, 0.03) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ===================== SHELL ===================== */
+  .tm-shell {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    background: var(--paper);
+    border: none;
+    border-radius: 0;
+    overflow: hidden;
+    box-shadow: none;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ===================== SIDEBAR ===================== */
+  .tm-sidebar {
+    width: 288px;
+    min-width: 288px;
+    background: rgba(255, 255, 255, 0.6);
+    border-right: 1px solid var(--line-soft);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .tm-logo {
+    padding: 20px 50px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tm-logo-mark { display: flex; align-items: center; gap: 12px; width: 100%; }
+
+  .tm-logo-icon {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    background: linear-gradient(155deg, #20283D 0%, #15192A 100%);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .tm-logo-icon svg { width: 22px; height: 22px; }
+
+  .tm-logo-text {
+    font-family: var(--display);
+    font-size: 19px; font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  .tm-logo-sub {
+    font-size: 10.5px; color: var(--ink-faint); margin-top: 2px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .tm-new-chat {
+    margin: 16px 16px 8px;
+    padding: 11px 14px;
+    background: var(--ink);
+    border: none;
+    border-radius: var(--r-md);
+    color: #FAFAF8;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: calc(100% - 32px);
+    transition: transform 0.2s var(--spring), box-shadow 0.2s var(--ease);
+    font-family: var(--sans);
+    letter-spacing: -0.01em;
+  }
+  .tm-new-chat:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(21,25,42,0.18); }
+  .tm-new-chat:active { transform: translateY(0) scale(0.98); }
+  .tm-new-chat i { font-size: 14px; }
+
+  .tm-section-label {
+    padding: 18px 22px 8px;
+    font-size: 10.5px; font-weight: 700; color: var(--ink-faint);
+    text-transform: uppercase; letter-spacing: 0.11em;
+  }
+
+  .tm-history-list { flex: 1; overflow-y: auto; padding: 0 12px 8px; }
+  .tm-history-list::-webkit-scrollbar { width: 3px; }
+  .tm-history-list::-webkit-scrollbar-track { background: transparent; }
+  .tm-history-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+  .tm-history-item {
+    padding: 10px 14px;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    border-radius: var(--r-sm);
+    margin: 2px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.15s var(--ease), color 0.15s var(--ease);
+    border: 1px solid transparent;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .tm-history-item:hover { background: var(--paper-deep); color: var(--ink); }
+  .tm-history-item.active {
+    background: var(--accent-pale);
+    color: var(--accent-deep);
+    border-color: var(--accent-line);
+  }
+
+  .tm-sidebar-footer {
+    padding: 14px 18px;
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: background 0.15s var(--ease);
+  }
+  .tm-sidebar-footer:hover { background: var(--paper-deep); }
+
+  .tm-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(155deg, var(--accent), var(--accent-deep));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+    position: relative;
+    font-family: var(--sans);
+  }
+  .tm-avatar::after {
+    content: '';
+    position: absolute; bottom: -1px; right: -1px;
+    width: 8px; height: 8px;
+    background: var(--good);
+    border-radius: 50%;
+    border: 2px solid var(--panel-solid);
+  }
+  .tm-agent-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .tm-agent-role { font-size: 10px; color: var(--ink-faint); margin-top: 1px; }
+
+  /* ===================== MAIN ===================== */
+  .tm-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; min-width: 0; }
+
+  .tm-topbar {
+    padding: 20px 36px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tm-topbar-title {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .tm-topbar-meta {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; color: var(--ink-faint);
+    font-family: var(--mono);
+    font-weight: 500;
+  }
+  .tm-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--good); position: relative; }
+  .tm-live-dot::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 50%;
+    border: 1px solid var(--good); opacity: 0.5;
+    animation: liveDotPing 2.2s ease-out infinite;
+  }
+  @keyframes liveDotPing { 0% { transform: scale(0.6); opacity: 0.6; } 100% { transform: scale(1.8); opacity: 0; } }
+
+  .tm-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 40px 40px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    scroll-behavior: smooth;
+  }
+  .tm-messages::-webkit-scrollbar { width: 4px; }
+  .tm-messages::-webkit-scrollbar-track { background: transparent; }
+  .tm-messages::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+  .tm-messages-inner {
+    max-width: 880px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    flex: 1;
+  }
+
+  /* ===================== WELCOME ===================== */
+  .tm-welcome {
+    text-align: center;
+    padding: 60px 0 8px;
+    animation: welcomeIn 0.7s var(--spring) both;
+    margin: auto 0;
+  }
+  @keyframes welcomeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  .tm-welcome h2 {
+    font-family: var(--display);
+    font-size: 38px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 10px;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+  }
+  .tm-welcome p {
+    font-size: 15.5px;
+    color: var(--ink-soft);
+    line-height: 1.65;
+    max-width: 460px;
+    margin: 0 auto 36px;
+    font-weight: 450;
+  }
+
+  .tm-suggestions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+  .tm-suggestion {
+    padding: 19px 21px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    text-align: left;
+    background: var(--panel-solid);
+    transition: border-color 0.2s var(--ease), transform 0.2s var(--spring), box-shadow 0.2s var(--ease);
+    line-height: 1.55;
+    font-family: var(--sans);
+  }
+  .tm-suggestion:hover {
+    border-color: var(--accent-line);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card);
+  }
+  .tm-suggestion:active { transform: translateY(0) scale(0.98); }
+  .tm-suggestion strong {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--accent-deep);
+    margin-bottom: 6px;
+  }
+  .tm-suggestion strong i { font-size: 15px; }
+
+  .tm-suggestion:nth-child(1) { animation: suggIn 0.5s 0.10s var(--spring) both; }
+  .tm-suggestion:nth-child(2) { animation: suggIn 0.5s 0.18s var(--spring) both; }
+  .tm-suggestion:nth-child(3) { animation: suggIn 0.5s 0.26s var(--spring) both; }
+  .tm-suggestion:nth-child(4) { animation: suggIn 0.5s 0.34s var(--spring) both; }
+  @keyframes suggIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  .tm-history-item:nth-child(1) { animation: histIn 0.3s 0.04s var(--ease) both; }
+  .tm-history-item:nth-child(2) { animation: histIn 0.3s 0.08s var(--ease) both; }
+  .tm-history-item:nth-child(3) { animation: histIn 0.3s 0.12s var(--ease) both; }
+  .tm-history-item:nth-child(4) { animation: histIn 0.3s 0.16s var(--ease) both; }
+  .tm-history-item:nth-child(5) { animation: histIn 0.3s 0.20s var(--ease) both; }
+  .tm-history-item:nth-child(6) { animation: histIn 0.3s 0.24s var(--ease) both; }
+  .tm-history-item:nth-child(7) { animation: histIn 0.3s 0.28s var(--ease) both; }
+  @keyframes histIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+
+  /* ===================== MESSAGES ===================== */
+  .tm-msg { display: flex; gap: 13px; animation: msgIn 0.4s var(--spring) both; }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .tm-msg.user { flex-direction: row-reverse; }
+
+  .tm-msg-avatar {
+    width: 32px; height: 32px; min-width: 32px;
+    border-radius: 50%;
+    background: linear-gradient(155deg, var(--accent), var(--accent-deep));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  .tm-msg-body { max-width: 72%; }
+
+  .tm-msg-bubble {
+    padding: 14px 19px;
+    border-radius: 16px;
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: var(--ink);
+    font-weight: 450;
+  }
+  .tm-msg.user .tm-msg-bubble {
+    background: var(--ink);
+    color: #FAFAF8;
+    border-bottom-right-radius: 4px;
+  }
+  .tm-msg.ai .tm-msg-bubble {
+    background: var(--panel-solid);
+    border: 1px solid var(--line-soft);
+    border-bottom-left-radius: 4px;
+    box-shadow: var(--shadow-card);
+  }
+  .tm-msg-time {
+    font-size: 10px;
+    color: var(--ink-faint);
+    margin-top: 7px;
+    padding: 0 4px;
+    font-family: var(--mono);
+  }
+  .tm-msg.user .tm-msg-time { text-align: right; }
+
+  /* ===================== RESULT CARD ===================== */
+  .tm-result-card {
+    background: var(--paper-deep);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--r-md);
+    padding: 2px 15px;
+    margin-top: 12px;
+  }
+  .tm-result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .tm-result-row:last-child { border-bottom: none; }
+  .tm-result-label { color: var(--ink-soft); font-size: 13.5px; font-weight: 500; }
+  .tm-result-value { font-weight: 600; color: var(--ink); font-family: var(--mono); font-size: 13px; }
+  .tm-result-value.green { color: var(--good); }
+
+  .tm-sources { display: flex; gap: 7px; margin-top: 12px; flex-wrap: wrap; }
+  .tm-source-tag {
+    padding: 5px 12px;
+    background: var(--accent-pale);
+    border: 1px solid var(--accent-line);
+    color: var(--accent-deep);
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--mono);
+  }
+
+  /* ===================== WAYFINDER (signature AI mark) =====================
+     A thin horizon arc with one travelling mark. At rest, the mark sits at a
+     fixed bearing with a slow breathing glow. While thinking, it sweeps the
+     arc like a route being plotted, then settles. This is the one place we
+     spend visual ambition — everything else stays quiet.
+  */
+  .wayfinder { width: 34px; height: 34px; flex-shrink: 0; margin-top: 2px; position: relative; }
+  .wayfinder svg { width: 100%; height: 100%; display: block; }
+
+  .wf-track {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 1.4;
+  }
+  .wf-arc {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-dasharray: 14 86;
+    stroke-dashoffset: 0;
+    transform-origin: 17px 17px;
+    animation: wfBreathe 3.6s ease-in-out infinite;
+  }
+  @keyframes wfBreathe {
+    0%, 100% { stroke-dashoffset: 0; opacity: 0.85; }
+    50% { stroke-dashoffset: -6; opacity: 1; }
+  }
+  .wf-mark {
+    fill: var(--accent);
+    transform-origin: 17px 17px;
+    animation: wfMarkBreathe 3.6s ease-in-out infinite;
+  }
+  @keyframes wfMarkBreathe {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(-9deg); }
+  }
+  .wf-core { fill: var(--ink); }
+  .wf-ring { fill: none; stroke: var(--line); stroke-width: 1; }
+
+  /* thinking state: full sweep, faster, brighter */
+  .wayfinder.thinking .wf-arc {
+    animation: wfSweep 1.6s linear infinite;
+    stroke-dasharray: 22 78;
+  }
+  @keyframes wfSweep {
+    0% { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -100; }
+  }
+  .wayfinder.thinking .wf-mark {
+    animation: wfMarkSweep 1.6s linear infinite;
+  }
+  @keyframes wfMarkSweep {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(-360deg); }
+  }
+  .wayfinder.thinking .wf-core {
+    animation: wfCorePulse 0.8s ease-in-out infinite;
+  }
+  @keyframes wfCorePulse {
+    0%, 100% { r: 2; opacity: 1; }
+    50% { r: 2.6; opacity: 0.7; }
+  }
+
+  .welcome-wayfinder { width: 64px; height: 64px; margin: 0 auto 18px; position: relative; }
+  .welcome-wayfinder svg { width: 100%; height: 100%; }
+  .welcome-wayfinder .wf-arc, .welcome-wayfinder .wf-mark { transform-origin: 32px 32px; }
+
+  /* ===================== THINKING ORB =====================
+     Matches the reference: a solid core that breathes (scales +
+     lightens slightly), two faint concentric rings as a fixed
+     boundary, and a handful of small particles orbiting at
+     different radii, speeds, and directions — independent, not
+     locked together, so it never looks like a single spinning
+     wheel. Built in our amber/terracotta palette instead of blue.
+  */
+  .thinkblob {
+    width: 36px; height: 36px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    position: relative;
+  }
+  .thinkblob svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+  .thinkblob-glow {
+    animation: orbGlowPulse 2.2s ease-in-out infinite;
+    transform-origin: 18px 18px;
+    transform-box: view-box;
+  }
+  @keyframes orbGlowPulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.25); }
+  }
+
+  .thinkblob-core {
+    animation: orbCorePulse 2.2s ease-in-out infinite;
+    transform-origin: 18px 18px;
+    transform-box: view-box;
+  }
+  @keyframes orbCorePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.16); }
+  }
+
+  .thinkblob-ring-outer {
+    animation: orbRingFade 2.2s ease-in-out infinite;
+  }
+  .thinkblob-ring-inner {
+    animation: orbRingFade 2.2s ease-in-out infinite reverse;
+  }
+  @keyframes orbRingFade {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.85; }
+  }
+
+  /* each particle orbits at its own radius/speed/direction via a
+     per-particle transform-origin + rotation animation set inline */
+  .thinkblob-particle {
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  .thinkblob-orbit-1 { animation: orbSpin1 3.2s linear infinite; transform-origin: 18px 18px; transform-box: view-box; }
+  .thinkblob-orbit-2 { animation: orbSpin2 4.6s linear infinite reverse; transform-origin: 18px 18px; transform-box: view-box; }
+  .thinkblob-orbit-3 { animation: orbSpin3 2.4s linear infinite; transform-origin: 18px 18px; transform-box: view-box; }
+  .thinkblob-orbit-4 { animation: orbSpin4 5.4s linear infinite reverse; transform-origin: 18px 18px; transform-box: view-box; }
+  .thinkblob-orbit-5 { animation: orbSpin5 3.8s linear infinite; transform-origin: 18px 18px; transform-box: view-box; }
+  @keyframes orbSpin1 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes orbSpin2 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes orbSpin3 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes orbSpin4 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes orbSpin5 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .thinkblob-dot {
+    animation: orbDotFade 2.2s ease-in-out infinite;
+  }
+  @keyframes orbDotFade {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+
+  /* welcome-screen variant, larger, calmer */
+  .welcome-thinkblob { width: 72px; height: 72px; margin: 0 auto 18px; position: relative; }
+  .welcome-thinkblob svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* ===================== TYPING ===================== */
+  .tm-typing {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 18px;
+    background: var(--panel-solid);
+    border: 1px solid var(--line-soft);
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+    width: fit-content;
+    box-shadow: var(--shadow-card);
+  }
+  .tm-typing-label {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    font-family: var(--sans);
+    font-weight: 500;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+  }
+  .tm-typing-label .dot {
+    opacity: 0;
+    animation: dotFade 1.4s ease-in-out infinite;
+  }
+  .tm-typing-label .dot:nth-child(2) { animation-delay: 0.18s; }
+  .tm-typing-label .dot:nth-child(3) { animation-delay: 0.36s; }
+  @keyframes dotFade {
+    0%, 100% { opacity: 0.15; }
+    50% { opacity: 1; }
+  }
+
+  /* ===================== INPUT BAR ===================== */
+  .tm-inputbar {
+    padding: 18px 40px 26px;
+    border-top: 1px solid var(--line-soft);
+    background: rgba(255,255,255,0.5);
+  }
+
+  .tm-inputbar-inner {
+    max-width: 880px;
+    margin: 0 auto;
+  }
+
+  .tm-input-wrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 11px;
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    border-radius: 17px;
+    padding: 13px 15px;
+    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  }
+  .tm-input-wrap:focus-within {
+    border-color: var(--accent-line);
+    box-shadow: 0 0 0 3px var(--accent-pale);
+  }
+
+  #tm-input {
+    flex: 1;
+    background: transparent;
+    border: none; outline: none;
+    font-size: 14.5px;
+    color: var(--ink);
+    font-family: var(--sans);
+    resize: none;
+    max-height: 80px;
+    line-height: 1.55;
+    min-height: 22px;
+    padding: 3px 2px;
+    font-weight: 450;
+  }
+  #tm-input::placeholder { color: var(--ink-faint); }
+
+  .tm-input-actions { display: flex; align-items: center; gap: 6px; }
+  .tm-attach-btn {
+    width: 32px; height: 32px;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    color: var(--ink-faint);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: all 0.15s var(--ease);
+  }
+  .tm-attach-btn:hover { color: var(--ink-soft); border-color: var(--ink-faint); background: var(--paper-deep); }
+
+  .tm-send-btn {
+    width: 34px; height: 34px; min-width: 34px;
+    background: var(--ink);
+    border: none;
+    border-radius: 10px;
+    color: #FAFAF8;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    transition: transform 0.2s var(--spring), background 0.2s var(--ease);
+  }
+  .tm-send-btn:hover { background: var(--accent-deep); transform: translateY(-1px); }
+  .tm-send-btn:active { transform: scale(0.92); }
+
+  .tm-input-hint {
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    text-align: center;
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-weight: 500;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .tm-input-hint .tm-status-dot { width: 5px; height: 5px; background: var(--good); border-radius: 50%; }
+
+  /* ripple */
+  .ripple-effect {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    animation: rippleOut 0.5s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes rippleOut { from { width: 0; height: 0; opacity: 1; } to { width: 70px; height: 70px; opacity: 0; margin: -35px; } }
+
+  /* ===================== RESPONSIVE ===================== */
+  @media (max-width: 760px) {
+    .tm-shell { flex-direction: column; }
+    .tm-sidebar { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--line-soft); max-height: 180px; }
+    .tm-history-list { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 14px; }
+    .tm-history-item { white-space: normal; flex: 0 0 auto; padding: 5px 11px; font-size: 11.5px; }
+    .tm-section-label { padding: 10px 14px 2px; }
+    .tm-logo { padding: 16px 16px 12px; }
+    .tm-new-chat { margin: 8px 14px; width: calc(100% - 28px); }
+    .tm-sidebar-footer { display: none; }
+    .tm-topbar { padding: 12px 18px; }
+    .tm-messages { padding: 18px 16px 12px; }
+    .tm-welcome { padding: 24px 0 8px; }
+    .tm-welcome h2 { font-size: 24px; }
+    .tm-welcome p { font-size: 13.5px; }
+    .tm-suggestions { grid-template-columns: 1fr; gap: 8px; }
+    .tm-suggestion { padding: 14px 16px; }
+    .tm-msg-body { max-width: 86%; }
+    .tm-inputbar { padding: 12px 14px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<h1 class="sr-only">Travel-PA — AI assistant for travel agents</h1>
+
+<div class="tm-shell" id="tm-shell">
+  <!-- SIDEBAR -->
+  <div class="tm-sidebar">
+    <div class="tm-logo">
+      <div class="tm-logo-mark">
+        <img src="AIlogo.png" alt="Travel-PA Logo" style="height: 100px; width: auto; display: block;">
+      </div>
+    </div>
+
+    <button class="tm-new-chat" id="new-chat-btn" onclick="startNew()">
+      <i class="ti ti-plus" aria-hidden="true"></i> New conversation
+    </button>
+
+    <div class="tm-section-label">Recent</div>
+    <div class="tm-history-list">
+      <div class="tm-history-item active" id="hist-1">Caribbean family under £5k</div>
+      <div class="tm-history-item" id="hist-2">MSC Virtuosa cabin options</div>
+      <div class="tm-history-item" id="hist-3">Best margin suppliers Q1</div>
+      <div class="tm-history-item" id="hist-4">Mr. Thompson booking history</div>
+      <div class="tm-history-item" id="hist-5">Maldives add-ons analysis</div>
+      <div class="tm-history-item" id="hist-6">Visa — Turkey British passport</div>
+      <div class="tm-history-item" id="hist-7">Royal Caribbean deposits</div>
+    </div>
+
+    <div class="tm-sidebar-footer" id="sidebar-footer">
+      <div class="tm-avatar">SA</div>
+      <div>
+        <div class="tm-agent-name">Sarah Ahmed</div>
+        <div class="tm-agent-role">Senior Agent</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="tm-main">
+    <div class="tm-topbar">
+      <div class="tm-topbar-title">Travel-PA</div>
+      <div class="tm-topbar-meta">
+        <span class="tm-live-dot"></span>
+        7,241 records indexed
+      </div>
+    </div>
+
+    <div class="tm-messages" id="tm-msgs-outer">
+      <div class="tm-messages-inner" id="tm-msgs">
+      <!-- Welcome -->
+      <div class="tm-welcome" id="tm-welcome">
+        <div class="welcome-wayfinder" id="welcome-wayfinder"></div>
+        <h2>Good morning, Sarah</h2>
+        <p>Ask anything about your past bookings — clients, suppliers, margins, destinations. I'll search the records and answer instantly.</p>
+        <div class="tm-suggestions">
+          <button class="tm-suggestion" id="suggest-1" onclick="useSuggestion(this)">
+            <strong><i class="ti ti-chart-bar" aria-hidden="true"></i> Best margins</strong>
+            <span>Which cruise line gave us the best commission last year?</span>
+          </button>
+          <button class="tm-suggestion" id="suggest-2" onclick="useSuggestion(this)">
+            <strong><i class="ti ti-user-search" aria-hidden="true"></i> Client lookup</strong>
+            <span>What has Mr. Thompson booked before?</span>
+          </button>
+          <button class="tm-suggestion" id="suggest-3" onclick="useSuggestion(this)">
+            <strong><i class="ti ti-wallet" aria-hidden="true"></i> Budget match</strong>
+            <span>Caribbean family of 4 under £5,000?</span>
+          </button>
+          <button class="tm-suggestion" id="suggest-4" onclick="useSuggestion(this)">
+            <strong><i class="ti ti-file-text" aria-hidden="true"></i> Supplier policy</strong>
+            <span>Royal Caribbean deposit deadlines?</span>
+          </button>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <!-- INPUT -->
+    <div class="tm-inputbar">
+      <div class="tm-inputbar-inner">
+        <div class="tm-input-wrap" id="input-wrap">
+          <textarea id="tm-input" placeholder="Ask about any booking, client, supplier, or destination…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+          <div class="tm-input-actions">
+            <button class="tm-attach-btn" id="attach-btn" aria-label="Attach file">
+              <i class="ti ti-paperclip" aria-hidden="true"></i>
+            </button>
+            <button class="tm-send-btn" id="send-btn" onclick="sendMsg()" aria-label="Send message">
+              <i class="ti ti-arrow-up" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+        <div class="tm-input-hint">
+          <span class="tm-status-dot"></span>
+          Searching across 7,241 bookings · 2019–2024
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Wayfinder builder ──
+     Thin arc (the "horizon"), a single travelling mark on it,
+     a dotted inner ring for scale, and a still core. */
+  function makeWayfinder(thinking) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const div = document.createElement('div');
+    div.className = 'wayfinder' + (thinking ? ' thinking' : '');
+
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 34 34');
+
+    function el(tag, attrs) {
+      const e = document.createElementNS(ns, tag);
+      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+      return e;
+    }
+
+    const track = el('circle', { cx: 17, cy: 17, r: 13.5, class: 'wf-track' });
+    const ring  = el('circle', { cx: 17, cy: 17, r: 9.5, class: 'wf-ring', 'stroke-dasharray': '1.5 4' });
+
+    const arcGroup = document.createElementNS(ns, 'g');
+    const arc = el('circle', { cx: 17, cy: 17, r: 13.5, class: 'wf-arc' });
+    arcGroup.appendChild(arc);
+
+    const markGroup = document.createElementNS(ns, 'g');
+    const mark = el('circle', { cx: 17, cy: 3.5, r: 2, class: 'wf-mark' });
+    markGroup.appendChild(mark);
+
+    const core = el('circle', { cx: 17, cy: 17, r: 2, class: 'wf-core' });
+
+    svg.append(track, ring, arcGroup, markGroup, core);
+    div.appendChild(svg);
+    return div;
+  }
+
+  document.getElementById('welcome-wayfinder').appendChild(makeWayfinder(false));
+
+  /* ── Thinking blob builder ──
+     A soft liquid sphere whose silhouette ripples via an SVG
+     feTurbulence + feDisplacementMap filter. The turbulence seed
+     and scale animate continuously so the edge deforms in an
+     organic, non-repeating-feeling way — Milkinside-style "AI is
+     thinking" motion, rather than a spinner or bouncing dots. */
+  let blobIdCounter = 0;
+  function makeThinkBlob() {
+    const ns = 'http://www.w3.org/2000/svg';
+    blobIdCounter += 1;
+    const uid = 'blob' + blobIdCounter + '_' + Math.random().toString(36).slice(2, 7);
+
+    const div = document.createElement('div');
+    div.className = 'thinkblob';
+
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 36 36');
+
+    function el(tag, attrs) {
+      const e = document.createElementNS(ns, tag);
+      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+      return e;
+    }
+
+    const cx = 18, cy = 18;
+    const defs = document.createElementNS(ns, 'defs');
+
+    // soft amber glow gradient behind the core
+    const glowGrad = el('radialGradient', { id: uid + '_glow', cx: '50%', cy: '50%', r: '50%' });
+    glowGrad.appendChild(el('stop', { offset: '0%', 'stop-color': '#E0A05A', 'stop-opacity': '0.45' }));
+    glowGrad.appendChild(el('stop', { offset: '100%', 'stop-color': '#E0A05A', 'stop-opacity': '0' }));
+
+    // core gradient — warm amber center, deeper brown edge, like the
+    // reference's blue core but in our terracotta palette
+    const coreGrad = el('radialGradient', { id: uid + '_core', cx: '38%', cy: '34%', r: '70%' });
+    coreGrad.appendChild(el('stop', { offset: '0%', 'stop-color': '#F0AE6A' }));
+    coreGrad.appendChild(el('stop', { offset: '55%', 'stop-color': '#C8762A' }));
+    coreGrad.appendChild(el('stop', { offset: '100%', 'stop-color': '#8F4F1F' }));
+
+    defs.append(glowGrad, coreGrad);
+
+    // soft glow halo behind everything
+    const glow = el('circle', { cx, cy, r: 11, fill: `url(#${uid}_glow)`, class: 'thinkblob-glow' });
+
+    // two faint static boundary rings, like the reference's concentric circles
+    const ringOuter = el('circle', {
+      cx, cy, r: 15.5, fill: 'none', stroke: '#E7E2D8', 'stroke-width': '0.8',
+      class: 'thinkblob-ring-outer'
+    });
+    const ringInner = el('circle', {
+      cx, cy, r: 11.5, fill: 'none', stroke: '#E7E2D8', 'stroke-width': '0.8',
+      class: 'thinkblob-ring-inner'
+    });
+
+    // solid pulsing core
+    const core = el('circle', { cx, cy, r: 7, fill: `url(#${uid}_core)`, class: 'thinkblob-core' });
+
+    // orbiting particles — each at its own radius, size, opacity, and
+    // independent orbit speed/direction (set via thinkblob-orbit-N classes)
+    const particleSpecs = [
+      { radius: 15.5, size: 1.3, orbitClass: 'thinkblob-orbit-1', angle: 20,  color: '#C8762A' },
+      { radius: 13.5, size: 1.0, orbitClass: 'thinkblob-orbit-2', angle: 200, color: '#E0A05A' },
+      { radius: 16.5, size: 0.9, orbitClass: 'thinkblob-orbit-3', angle: 110, color: '#D98C3F' },
+      { radius: 12.5, size: 1.1, orbitClass: 'thinkblob-orbit-4', angle: 300, color: '#8F4F1F' },
+      { radius: 15,   size: 1.0, orbitClass: 'thinkblob-orbit-5', angle: 250, color: '#E0A05A' },
+    ];
+
+    const particleEls = particleSpecs.map(p => {
+      const orbitGroup = document.createElementNS(ns, 'g');
+      orbitGroup.setAttribute('class', p.orbitClass);
+      const rad = (p.angle * Math.PI) / 180;
+      const px = cx + Math.cos(rad) * p.radius;
+      const py = cy + Math.sin(rad) * p.radius;
+      const dot = el('circle', {
+        cx: px, cy: py, r: p.size, fill: p.color, class: 'thinkblob-dot'
+      });
+      orbitGroup.appendChild(dot);
+      return orbitGroup;
+    });
+
+    svg.append(defs, glow, ringOuter, ringInner, core, ...particleEls);
+    div.appendChild(svg);
+    return div;
+  }
+
+  /* ── Response data ── */
+  const responses = [
+    {
+      trigger: ['caribbean','family','5000','£5','budget'],
+      text: "Based on 47 matching bookings in your data, here's what similar families booked:",
+      card: { rows: [
+        { label:'Top pick', value:'MSC Virtuosa — 7 nights' },
+        { label:'Avg. selling price', value:'£4,650' },
+        { label:'Avg. commission', value:'£420', cls:'green' },
+        { label:'Cabin type', value:'Fantastica Balcony' },
+        { label:'Departure', value:'Southampton' },
+      ], sources:['47 past bookings','MSC supplier data','2023–2024'] }
+    },
+    {
+      trigger: ['margin','commission','profit','supplier','cruise line'],
+      text: "Analysing all 2,847 cruise bookings for commission data:",
+      card: { rows: [
+        { label:'1st — Royal Caribbean', value:'18.4% avg margin', cls:'green' },
+        { label:'2nd — MSC Cruises', value:'16.9% avg margin' },
+        { label:'3rd — Celebrity', value:'15.2% avg margin' },
+        { label:'Total commission 2023', value:'£284,500', cls:'green' },
+        { label:'Based on', value:'2,847 bookings' },
+      ], sources:['2,847 cruise bookings','2023 full year'] }
+    },
+    {
+      trigger: ['thompson','client','history','booked before','past booking'],
+      text: "Found Mr. Thompson's booking history — 6 bookings since 2019:",
+      card: { rows: [
+        { label:'Last booking', value:'Maldives, June 2024' },
+        { label:'Total spend', value:'£38,200' },
+        { label:'Preferred cabin', value:'Suite / Balcony' },
+        { label:'Preferred board', value:'All Inclusive' },
+        { label:'Special notes', value:'Anniversary trips' },
+      ], sources:['Client #TH-2891','6 bookings','2019–2024'] }
+    },
+    {
+      trigger: ['royal caribbean','deposit','deadline','cancel','policy'],
+      text: "Royal Caribbean payment & cancellation policy from your supplier data:",
+      card: { rows: [
+        { label:'Deposit due', value:'7 days after booking' },
+        { label:'Full payment', value:'90 days before sailing' },
+        { label:'Free cancellation', value:'Up to 90 days prior' },
+        { label:'Cancel 89–60 days', value:'50% charge' },
+        { label:'Cancel under 60 days', value:'100% charge' },
+      ], sources:['RCL supplier docs','Updated Jan 2024'] }
+    }
+  ];
+
+  const defaultResponse = {
+    text: "I've searched your booking data. Here's what I found across 7,241 records:",
+    card: { rows: [
+      { label:'Matching bookings', value:'124 records found' },
+      { label:'Date range', value:'2019 – 2024' },
+      { label:'Top destination', value:'Mediterranean' },
+      { label:'Avg. booking value', value:'£3,840' },
+      { label:'Avg. commission', value:'£345', cls:'green' },
+    ], sources:['7,241 bookings','All suppliers','2019–2024'] }
+  };
+
+  function getResponse(text) {
+    const lower = text.toLowerCase();
+    for (const r of responses) if (r.trigger.some(t => lower.includes(t))) return r;
+    return defaultResponse;
+  }
+
+  function buildCard(card) {
+    const rows = card.rows.map(r =>
+      `<div class="tm-result-row"><span class="tm-result-label">${r.label}</span><span class="tm-result-value ${r.cls||''}">${r.value}</span></div>`
+    ).join('');
+    const tags = card.sources.map(s => `<span class="tm-source-tag">${s}</span>`).join('');
+    return `<div class="tm-result-card">${rows}</div><div class="tm-sources">${tags}</div>`;
+  }
+
+  function appendMsg(role, html) {
+    const w = document.getElementById('tm-welcome');
+    if (w) { w.style.transition = 'opacity 0.25s ease'; w.style.opacity = '0'; setTimeout(() => { const w2 = document.getElementById('tm-welcome'); if (w2) w2.remove(); }, 250); }
+
+    const msgs = document.getElementById('tm-msgs');
+    const now = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    const div = document.createElement('div');
+    div.className = `tm-msg ${role}`;
+
+    if (role === 'user') {
+      div.innerHTML = `<div class="tm-msg-avatar">SA</div>
+        <div class="tm-msg-body">
+          <div class="tm-msg-bubble"></div>
+          <div class="tm-msg-time">${now}</div>
+        </div>`;
+      div.querySelector('.tm-msg-bubble').textContent = html;
+    } else {
+      const wf = makeWayfinder(false);
+      const body = document.createElement('div');
+      body.className = 'tm-msg-body';
+      const bubble = document.createElement('div');
+      bubble.className = 'tm-msg-bubble';
+      bubble.innerHTML = html;
+      const time = document.createElement('div');
+      time.className = 'tm-msg-time';
+      time.textContent = `Travel-PA · ${now}`;
+      body.appendChild(bubble);
+      body.appendChild(time);
+      div.appendChild(wf);
+      div.appendChild(body);
+    }
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function showTyping() {
+    const msgs = document.getElementById('tm-msgs');
+    const div = document.createElement('div');
+    div.className = 'tm-msg ai';
+    div.id = 'tm-typing-indicator';
+    const blob = makeThinkBlob();
+    const body = document.createElement('div');
+    body.className = 'tm-msg-body';
+    body.innerHTML = `<div class="tm-typing"><div class="thinkblob-slot"></div><span class="tm-typing-label">Thinking<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span></div>`;
+    body.querySelector('.thinkblob-slot').replaceWith(blob);
+    div.appendChild(body);
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('tm-typing-indicator');
+    if (t) {
+      t.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(-4px)';
+      setTimeout(() => t.remove(), 200);
+    }
+  }
+
+  function sendMsg() {
+    const inp = document.getElementById('tm-input');
+    const text = inp.value.trim();
+    if (!text) return;
+    inp.value = '';
+    inp.style.height = 'auto';
+
+    const btn = document.getElementById('send-btn');
+    const ripple = document.createElement('div');
+    ripple.className = 'ripple-effect';
+    btn.style.position = 'relative';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 500);
+
+    appendMsg('user', text);
+    showTyping();
+    const delay = 650 + Math.random() * 850;
+    setTimeout(() => {
+      removeTyping();
+      setTimeout(() => {
+        const r = getResponse(text);
+        appendMsg('ai', r.text + buildCard(r.card));
+      }, 220);
+    }, delay);
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+  }
+
+  function useSuggestion(btn) {
+    const span = btn.querySelector('span');
+    const text = span ? span.textContent.trim() : btn.textContent.trim();
+    btn.style.transition = 'transform 0.15s ease, border-color 0.15s ease';
+    btn.style.transform = 'scale(0.96)';
+    btn.style.borderColor = 'var(--accent)';
+    setTimeout(() => {
+      document.getElementById('tm-input').value = text;
+      sendMsg();
+    }, 150);
+  }
+
+  function startNew() {
+    const msgs = document.getElementById('tm-msgs');
+    msgs.style.transition = 'opacity 0.25s ease';
+    msgs.style.opacity = '0';
+    setTimeout(() => {
+      msgs.innerHTML = '';
+      msgs.style.opacity = '1';
+      const welcome = document.createElement('div');
+      welcome.className = 'tm-welcome';
+      welcome.id = 'tm-welcome';
+      const wfWrap = document.createElement('div');
+      wfWrap.className = 'welcome-wayfinder';
+      welcome.appendChild(wfWrap);
+      welcome.innerHTML += `<h2>New conversation</h2>
+        <p>Ask anything about your past bookings — clients, suppliers, margins, destinations.</p>
+        <div class="tm-suggestions">
+          <button class="tm-suggestion" onclick="useSuggestion(this)"><strong><i class="ti ti-chart-bar"></i> Best margins</strong><span>Which cruise line gave us the best commission last year?</span></button>
+          <button class="tm-suggestion" onclick="useSuggestion(this)"><strong><i class="ti ti-user-search"></i> Client lookup</strong><span>What has Mr. Thompson booked before?</span></button>
+          <button class="tm-suggestion" onclick="useSuggestion(this)"><strong><i class="ti ti-wallet"></i> Budget match</strong><span>Caribbean family of 4 under £5,000?</span></button>
+          <button class="tm-suggestion" onclick="useSuggestion(this)"><strong><i class="ti ti-file-text"></i> Supplier policy</strong><span>Royal Caribbean deposit deadlines?</span></button>
+        </div>`;
+      msgs.appendChild(welcome);
+      document.getElementById('welcome-wayfinder').appendChild(makeWayfinder(false));
+    }, 250);
+  }
+
+  // history item click
+  document.querySelectorAll('.tm-history-item').forEach(item => {
+    item.addEventListener('click', function() {
+      document.querySelectorAll('.tm-history-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
